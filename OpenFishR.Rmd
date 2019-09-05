@@ -1,0 +1,96 @@
+---
+title: "OpenFishR"
+output: 
+   flexdashboard::flex_dashboard:
+    theme: cosmo 
+    vertical_layout: scroll 
+runtime: shiny
+---
+
+```{r pipo,eval=F,include=F}
+#<script>
+#$('.navbar-logo').wrap('<a href="https://gfcm.sharepoint.com/sites/DCRF/SitePages/Data\%20Quality.aspx">');
+#</script>
+
+
+library(shiny)
+rmarkdown::run("OpenFishR.Rmd")#",oetput="pipo.html")
+#rmarkdown::render_site("OpenFishR.Rmd")#,flex_dashboard())#",output="pipo.html")
+
+```
+
+```{r global, include=FALSE}
+library(shiny)
+library(ggplot2)
+library(flexdashboard)
+#library(knitr)
+#library(dplyr)
+#library(tidyr)
+library(plotly)
+#library(openxlsx)
+library(DT)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(rgeos)
+```
+
+```{r data,include=F}
+dataDirectory<-"./data/"
+ExtraFishData <- readRDS(paste0(dataDirectory,"ExtraFishData.RDS"))
+AcousticSurveyCatchData <- readRDS(paste0(dataDirectory,"AcousticSurveyCatchData.RDS"))
+```
+   
+```{r fct,include=F}
+#wikipedia url
+wikiurl<-function(sppname){
+ wikipediaURL <- ExtraFishData[as.character(ExtraFishData$SciName)==spp(),c("WikipediaPage")]
+     myURL <- paste("<a href='", as.character(wikipediaURL), "' target='_blank'>", as.character(wikipediaURL), "</a>" , sep = "")
+         myURL
+}
+#
+```
+
+
+
+
+Sidebar {.sidebar}
+-------------------------------------
+
+Select the species:
+```{r}
+# shiny inputs defined here
+#selectInput("Species",label="Species",choice)
+selectInput("speciesInput", label = NULL, choices = c("None",as.character(ExtraFishData$SciName)), selected = NULL)
+  
+```
+
+Some text about the species selection
+ 
+
+Row
+----------------------------------------------------
+    
+### Chart 1
+    
+```{r,eval=T}
+spp <- reactive(as.character(input$speciesInput))
+#spp<-"Capros aper"
+renderPrint(spp())
+
+
+renderPrint(wikiurl(spp()))
+         
+
+```
+    
+Row
+----------------------------------------------------
+
+### Chart 2
+
+```{r}
+dat<-data.frame(x=rnorm(100),y=rnorm(100))
+p1<-ggplot()+geom_point(data=dat,aes(x=x,y=y))
+ggplotly(p1)
+
+```
