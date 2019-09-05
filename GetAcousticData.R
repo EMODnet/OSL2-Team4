@@ -11,6 +11,7 @@ getBioticDataFile(submissionIDs = idsToDownload)
 # get the catch data from all the biotic files
 myCatch <- getAllCatchData()
 
+saveRDS(myCatch, file = paste(dataDirectory,"AcousticSurveyCatchData.RDS", sep =""))
 
 
 
