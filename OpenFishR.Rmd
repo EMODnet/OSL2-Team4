@@ -59,9 +59,9 @@ spp=Valid_Aphia,type="DATRAS",cpue)
 surveyxy<-rbind(acousxy,datrasxy)%>%mutate(x=as.numeric(x),y=as.numeric(y))
 surveyxy18<-surveyxy%>%filter(substr(time,1,4)=="2018")
 saveRDS(surveyxy18,file="./data/surveyxy18.RDS")
+#surveyxy18<-readRDS(file="./data/surveyxy18.RDS")
+#pltdens(surveyxy18)
 }
-surveyxy18<-readRDS(surveyxy18,file="./data/surveyxy18.RDS")
-pltdens(surveyxy18)
 
 pltdens<-function(dat,sppcode="127160"){
 	tmp<-dat%>%filter(spp==sppcode)
@@ -93,6 +93,7 @@ saveRDS(fdilanyear,file="./data/fdilanyear.RDS")
 }
 fdilanyear<- readRDS(paste0(dataDirectory,"fdilanyear.RDS"))
 div<- readRDS(paste0(dataDirectory,"div.RDS"))
+surveyxy18<-readRDS(file="./data/surveyxy18.RDS")
 r2x<-range(div$x)
 r2y<-range(div$y)
 
