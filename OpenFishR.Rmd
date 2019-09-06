@@ -2,8 +2,9 @@
 title: "OpenFishR"
 output: 
    flexdashboard::flex_dashboard:
-    theme: cosmo 
     vertical_layout: scroll 
+    theme: cosmo 
+    orientation: rows
 runtime: shiny
 ---
 
@@ -14,6 +15,10 @@ runtime: shiny
 
 
 library(shiny)
+
+
+
+
 rmarkdown::run("OpenFishR.Rmd")#",oetput="pipo.html")
 #rmarkdown::render_site("OpenFishR.Rmd")#,flex_dashboard())#",output="pipo.html")
 
@@ -36,61 +41,221 @@ library(rgeos)
 
 ```{r data,include=F}
 dataDirectory<-"./data/"
-ExtraFishData <- readRDS(paste0(dataDirectory,"ExtraFishData.RDS"))
-AcousticSurveyCatchData <- readRDS(paste0(dataDirectory,"AcousticSurveyCatchData.RDS"))
+fct1<-function(a){paste0(toupper(substr(a,1,1)),substr(a,2,nchar(a)))}
+ExtraFishData <-
+	readRDS(paste0(dataDirectory,"ExtraFishData2.RDS"))%>%
+	ungroup()%>%
+	filter(!is.na(CommonName))%>%
+	mutate(CommonName=fct1(CommonName))
+#survey
+if(F){
+acous<- readRDS(paste0(dataDirectory,"AcousticSurveyCatchData.RDS"))
+datras<- readRDS(paste0(dataDirectory,"DATRASCPUE.RDS"))
+#presence absence
+acousxy<-acous%>%transmute(time=substr(HaulStartTime,1,10),x=HaulStartLongitude,y=HaulStartLatitude,
+	spp=CatchSpeciesCode,type="Acoustic",cpue=1)
+datrasxy<-datras%>%transmute(time=paste(Year.x,Month,Day,sep="-"),x=ShootLong,y=ShootLat,
+spp=Valid_Aphia,type="DATRAS",cpue)
+surveyxy<-rbind(acousxy,datrasxy)%>%mutate(x=as.numeric(x),y=as.numeric(y))
+surveyxy18<-surveyxy%>%filter(substr(time,1,4)=="2018")
+saveRDS(surveyxy18,file="./data/surveyxy18.RDS")
+}
+surveyxy18<-readRDS(surveyxy18,file="./data/surveyxy18.RDS")
+pltdens(surveyxy18)
+
+pltdens<-function(dat,sppcode="127160"){
+	tmp<-dat%>%filter(spp==sppcode)
+	tmp<-KernSmooth::bkde2D(tmp%>%transmute(x,y),bandwidth=c(.01,.01),gridsize=c(100,100))
+	tmp<-data.frame(x=rep(tmp$x1,each=length(tmp$x1)),y=rep(tmp$x2,length(tmp$x2)),count=c(tmp$fhat))
+	rx<-range(tmp$x)
+	ry<-range(tmp$y)
+        plt<-ggplot()+#geom_sf(data=div,fill=NA,colour="black",lwd=2)+e
+                geom_raster(data=tmp,aes(x=x,y=y,fill=count),stat="identity",alpha=1)+
+	#	geom_point(data=surveyxy18,aes(x=x,y=y),pch=".",alpha=.2)+
+                scale_fill_distiller(palette='Spectral',name="Presence \n(Kernel density\nestimates)")+
+                geom_sf(data=div,fill=NA,colour="black",lwd=.3,alpha=.5)+
+                geom_sf_text(data=div,aes(label=gsub("\\.","",gsub("27.","",div))),size=3,color="black")+
+                borders("world",xlim=rx,ylim=ry,fill="grey",colour=NA,alpha=1)+
+                coord_sf(xlim=rx,ylim=ry)+
+                theme_bw()+
+                xlab("Longitude")+ylab("Latitude")
+	return(plt)
+}
+
+
+#FDI bidouillade
+if(F){
+fdilan<- readRDS(paste0(dataDirectory,"fdilan.RDS"))
+fdilanyear<-fdilan%>%filter(year%in%c("2014","2015","2016"))%>%
+	group_by(spp,rect,x,y)%>%
+                summarise(w=mean(w))%>%ungroup()
+saveRDS(fdilanyear,file="./data/fdilanyear.RDS")
+}
+fdilanyear<- readRDS(paste0(dataDirectory,"fdilanyear.RDS"))
+div<- readRDS(paste0(dataDirectory,"div.RDS"))
+r2x<-range(div$x)
+r2y<-range(div$y)
+
 ```
    
 ```{r fct,include=F}
 #wikipedia url
-wikiurl<-function(sppname){
- wikipediaURL <- ExtraFishData[as.character(ExtraFishData$SciName)==spp(),c("WikipediaPage")]
+wikiurl<-function(sppname,dat=ExtraFishData){
+ wikipediaURL <- dat[as.character(dat$CommonName)==sppname,c("WikipediaPage")]
      myURL <- paste("<a href='", as.character(wikipediaURL), "' target='_blank'>", as.character(wikipediaURL), "</a>" , sep = "")
+	cat(myURL,file="myUrl.txt")
          myURL
 }
-#
+#wikipedia image
+wikiimg<-function(sppname,dat=ExtraFishData){
+	imgurl<- dat[as.character(dat$CommonName)==sppname,c("Image")]
+	paste0("<img src='",as.character(imgurl),"'>")
+}
+#wikipedia image
+recipes<-function(sppname,dat=ExtraFishData){
+	urltmp<- dat[as.character(dat$CommonName)==sppname,c("RecipeURL")]
+	myURL <- paste0("<a href='", as.character(urltmp), "' target='_blank'>", "Recipes from BBC", "</a>")
+}
+  
+
+#species name + scianme 
+getsppname<-function(sppname,dat=ExtraFishData){
+  nom1<-dat[as.character(dat$CommonName)==sppname,c("CommonName")]
+  nom2<-dat[as.character(dat$CommonName)==sppname,c("SciName")]
+  paste0(nom1," (",nom2,")")
+}
+#pecies FAO name
+getfao<-function(sppname,dat=ExtraFishData){
+  dat[as.character(dat$CommonName)==sppname,c("fao")]$fao
+}
+#pecies AphiaIa 
+getaphia<-function(sppname,dat=ExtraFishData){
+  dat[as.character(dat$CommonName)==sppname,c("AphiaID")]$AphiaID
+}
+
+#species abstract
+abstract<-function(sppname,dat=ExtraFishData){
+	as.character(dat[as.character(dat$CommonName)==sppname,c("Abstract")])
+}
+if(F){
+#abstract("common sole")
+getsppname("Common sole")
+wikiimg("Common sole")
+}
+
 ```
 
 
 
 
 Sidebar {.sidebar}
--------------------------------------
+=========================================
 
-Select the species:
+### Select the species:
+
 ```{r}
 # shiny inputs defined here
 #selectInput("Species",label="Species",choice)
-selectInput("speciesInput", label = NULL, choices = c("None",as.character(ExtraFishData$SciName)), selected = NULL)
+selectInput(c("speciesInput","pipo"), label = NULL, choices = c("None",as.character(ExtraFishData$CommonName)), selected = "Common sole")
   
 ```
 
 Some text about the species selection
- 
 
-Row
-----------------------------------------------------
-    
-### Chart 1
-    
 ```{r,eval=T}
-spp <- reactive(as.character(input$speciesInput))
-#spp<-"Capros aper"
-renderPrint(spp())
-
-
-renderPrint(wikiurl(spp()))
-         
-
+spp <- reactive((input$speciesInput))
+#spp <- eventReactive(as.character(input$speciesInput))
 ```
-    
-Row
-----------------------------------------------------
+ 
+Overview
+========================================
 
-### Chart 2
+<span style="color:black;font-size:26px;font-weight:bold"> `r renderText(getsppname(spp()))` </span>
+
+Row
+-------------------------------------
+    
+
+###
+
+```{r,eval=T}
+
+
+shinyApp(
+  ui = fluidPage(
+      fillCol(flex = c(NA, NA), 
+      #inputPanel( textInput("speciesInput",label=NULL,value="Flet")),
+      textAreaInput( "speciesInput",label=NULL,value="Flet",height='1px',width='1px'),
+#	h3("Pictures"),
+     
+      htmlOutput("img"),
+      htmlOutput("link1"),
+	h3("Recipes"),
+      htmlOutput("link2")
+    )
+  ),
+  server = function(input, output,session) {
+    removeUI(selector="div:has(> input)")
+    #observe({ updateTextInput(session, "speciesInput", value = spp()) })
+    observe({ updateTextAreaInput(session, "speciesInput", value = spp()) })
+    output$img<- renderText({ paste(wikiimg(input$speciesInput))	})
+    output$link1<- renderText({ paste(wikiurl(input$speciesInput))	})
+    output$link2<- renderText({ paste(recipes(input$speciesInput))	})
+  }
+)
+```
+
+### Facts 
+
+```{r,eval=T,}
+renderText(abstract(spp()))
+```
+
+Row
+-------------------------------------
+
+### Landings (average 2014-2016) 
 
 ```{r}
-dat<-data.frame(x=rnorm(100),y=rnorm(100))
-p1<-ggplot()+geom_point(data=dat,aes(x=x,y=y))
-ggplotly(p1)
+  #lan year
+
+#renderPlotly({
+renderPlot({
+   tmp<-fdilanyear%>%filter(spp==getfao(spp()))#%>%
+   #tmp<-fdilan%>%filter(spp=="SOL"&year=="2016")%>%
+	r2x<-range(tmp$x)
+	r2y<-range(tmp$y)
+        pltlanyear<-ggplot()+#geom_sf(data=div,fill=NA,colour="black",lwd=2)+
+                geom_raster(data=tmp,aes(x=x,y=y,fill=w),stat="identity",alpha=1)+
+                #geom_point(data=maplan,aes(x=x,y=y),stat="identity",alpha=1)+
+                scale_fill_distiller(palette='Spectral',name="Landings (t)")+
+                geom_sf(data=div,fill=NA,colour="black",lwd=.3,alpha=.5)+
+                geom_sf_text(data=div,aes(label=gsub("\\.","",gsub("27.","",div))),size=3,color="black")+
+                borders("world",xlim=r2x,ylim=r2y,fill="grey",colour=NA,alpha=1)+
+                #facet_wrap(~country,)+
+                #facet_wrap(gear~year,ncol=6,drop=FALSE)+
+                coord_sf(xlim=r2x,ylim=r2y)+
+                theme_bw()+
+                #ggtitle(paste0("French landings for ",info$stock,"\n","in ",info$area))+
+                xlab("Longitude")+ylab("Latitude")
+#ggplotly(pltlanyear,tooltip=c("x","y","w"))
+pltlanyear
+})
+
+
+
+
 
 ```
+
+### Distribution 
+
+```{r}
+renderPlot({
+	pltdens(surveyxy18,sppcode=getaphia(spp()))#,rx=r2x,ry=r2y)
+})
+```
+
+About
+========================================
+OSL and data sources
