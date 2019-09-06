@@ -141,6 +141,10 @@ if(F){
 if(F){
 }
 
+#SAG
+SAGstock<- readRDS(paste0(dataDirectory,"SAG_stocklist.RDS"))
+SAGsummary<- readRDS(paste0(dataDirectory,"SAG_summary.rds"))
+
 ```
    
 ```{r fct,include=F}
@@ -187,6 +191,31 @@ if(F){
 getsppname("Common sole")
 getfao("Common sole")
 wikiimg("Common sole")
+}
+
+
+rawToJpeg <- function(pic_data) {
+    tF <- tempfile(fileext = ".png")
+    f = file(tF, "wb")           # OPEN FILE CONNECTION
+    writeBin(pic_data, con = f, useBytes=TRUE)      # TRANSFER RAW DATA
+    close(f)                                        # CLOSE FILE CONNECTION
+    return(tF)
+}
+
+
+#ScName
+getSciName <- function(sppname,dat=ExtraFishData){
+  as.character(dat[as.character(dat$CommonName)==sppname, c("SciName")])
+}
+
+#Loop
+genStatus <- function(sppname) {
+	for(i in 1:length(SAGstock[SAGstock$SpeciesName==sppname, c("StockDescription")])) {
+		SAGstock[SAGstock$SpeciesName==sppname, c("StockDescription")][[i]]
+		rawToJpeg(SAGstock[SAGstock$SpeciesName==sppname, c("statusPic")][[1]][[1]])
+	}
+
+	return("Hello")
 }
 
 ```
@@ -355,6 +384,26 @@ pltcountry
 
 })
 ```
+
+### Status 
+
+```{r}
+#renderText({reactive({
+#genStatus(getSciName(spp()))
+#})
+#})
+
+renderImage({list(src=rawToJpeg(SAGstock[SAGstock$SpeciesName==getSciName(spp()), c("statusPic")][[1]][[1]]))})
+```
+
+
+
+### Summaries 
+
+```{r}
+renderImage({list(src=rawToJpeg(SAGstock[SAGstock$SpeciesName==getSciName(spp()), c("statusPic")][[1]][[2]]))})
+```
+
 
 About
 ========================================
