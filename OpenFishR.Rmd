@@ -37,6 +37,8 @@ library(DT)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(rgeos)
+library(mapdata)
+library(geosphere)
 ```
 
 ```{r data,include=F}
@@ -128,6 +130,7 @@ fdilanyearcountry<-readRDS(file="./data/fdilanyearcountry.RDS")
 div<- readRDS(paste0(dataDirectory,"div.RDS"))
 surveyxy18<-readRDS(file="./data/surveyxy18.RDS")
 fdilanfleet<-readRDS(file="./data/fdilanfleet.RDS")
+lanflux<-readRDS(file="./data/lanflux.RDS")
 r2x<-range(div$x)
 r2y<-range(div$y)
 
@@ -331,6 +334,48 @@ renderPlot({
 })
 ```
 
+Landings flux
+========================================
+
+<span style="color:black;font-size:26px;font-weight:bold"> `r renderText(getsppname(spp()))` </span>
+
+```{r}
+renderPlot({
+#	pltdens(surveyxy18,sppcode=getaphia(spp()))#,rx=r2x,ry=r2y)
+lanflux<-lanflux%>%filter(spp==getfao(spp()))
+lanflux<-na.omit(lanflux)
+rx<-range(c(lanflux$xd,lanflux$xc),na.rm=T)
+ry<-range(c(lanflux$yd,lanflux$yc),na.rm=T)
+div0<-div%>%filter(div%in%unique(lanflux$div))
+
+#test a geographical map with network of catches
+#plot(NULL,xlim=rx,ylim=ry,asp=1)
+plot(div0$geometry,col="light blue",add=F,xlim=rx,ylim=ry)
+map('worldHires',xlim=rx,ylim=ry,fill=T,bg="light blue",col="lightgrey",lwd=0.1,add=T,wrap=T)
+aa<-lanflux%>%group_by(div,xd,yd)%>%summarise(w=sum(w,na.rm=T))
+points(x=lanflux$xc,y=lanflux$yc,pch=19,col="orange",cex=0.1)
+points(x=aa$xd,y=aa$yd,pch=19,col="orange",cex=round(2*aa$w/max(aa$w)))
+title("Landings flux between ICES divisions and countries (average 2014-2016)")
+#points(x=pipo$xr,y=pipo$yr,pch=19,col="blue",cex=0.1)
+#pipo1<-na.omit(pipo)
+#for(i in 1:nrow(pipo1)){
+col.1 <- adjustcolor("orange red", alpha=0.4)
+col.2 <- adjustcolor("orange", alpha=0.4)
+edge.pal <- colorRampPalette(c(col.1, col.2), alpha = TRUE)
+edge.col <- edge.pal(100)
+#id<-which(pipo1$rect=="29F0")
+for(i in 1:nrow(lanflux)){
+	                arc<-gcIntermediate(c(lanflux$xd[i],lanflux$yd[i]),c(lanflux$xc[i],lanflux$yc[i]),n=100,addStartEnd=T)
+        edge.ind<-round(100*lanflux$w[i]/max(lanflux$w,na.rm=T))
+	                lines(arc,col=edge.col[edge.ind],lwd=edge.ind/10)
+}
+
+})
+
+
+
+```
+
 Fleet
 ========================================
 
@@ -385,6 +430,14 @@ pltcountry
 })
 ```
 
+Stock status 
+=======================================================
+
+<span style="color:black;font-size:26px;font-weight:bold"> `r renderText(getsppname(spp()))` </span>
+
+Row
+-------------------------------------
+
 ### Status 
 
 ```{r}
@@ -397,12 +450,15 @@ renderImage({list(src=rawToJpeg(SAGstock[SAGstock$SpeciesName==getSciName(spp())
 ```
 
 
+Row
+-------------------------------------
 
 ### Summaries 
 
 ```{r}
 renderImage({list(src=rawToJpeg(SAGstock[SAGstock$SpeciesName==getSciName(spp()), c("statusPic")][[1]][[2]]))})
 ```
+
 
 
 About
