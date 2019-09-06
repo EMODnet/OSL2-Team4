@@ -41,12 +41,7 @@ library(rgeos)
 
 ```{r data,include=F}
 dataDirectory<-"./data/"
-fct1<-function(a){paste0(toupper(substr(a,1,1)),substr(a,2,nchar(a)))}
-ExtraFishData <-
-	readRDS(paste0(dataDirectory,"ExtraFishData2.RDS"))%>%
-	ungroup()%>%
-	filter(!is.na(CommonName))%>%
-	mutate(CommonName=fct1(CommonName))
+ExtraFishData <- readRDS(paste0(dataDirectory,"ExtraFishData3.RDS"))
 #survey
 if(F){
 acous<- readRDS(paste0(dataDirectory,"AcousticSurveyCatchData.RDS"))
@@ -65,10 +60,10 @@ saveRDS(surveyxy18,file="./data/surveyxy18.RDS")
 
 pltdens<-function(dat,sppcode="127160"){
 	tmp<-dat%>%filter(spp==sppcode)
-	tmp<-KernSmooth::bkde2D(tmp%>%transmute(x,y),bandwidth=c(.01,.01),gridsize=c(100,100))
-	tmp<-data.frame(x=rep(tmp$x1,each=length(tmp$x1)),y=rep(tmp$x2,length(tmp$x2)),count=c(tmp$fhat))
 	rx<-range(tmp$x)
 	ry<-range(tmp$y)
+	tmp<-KernSmooth::bkde2D(tmp%>%transmute(x,y),bandwidth=c(.01,.01),gridsize=c(100,100))
+	tmp<-data.frame(x=rep(tmp$x1,each=length(tmp$x1)),y=rep(tmp$x2,length(tmp$x2)),count=c(tmp$fhat))
         plt<-ggplot()+#geom_sf(data=div,fill=NA,colour="black",lwd=2)+e
                 geom_raster(data=tmp,aes(x=x,y=y,fill=count),stat="identity",alpha=1)+
 	#	geom_point(data=surveyxy18,aes(x=x,y=y),pch=".",alpha=.2)+
@@ -90,12 +85,61 @@ fdilanyear<-fdilan%>%filter(year%in%c("2014","2015","2016"))%>%
 	group_by(spp,rect,x,y)%>%
                 summarise(w=mean(w))%>%ungroup()
 saveRDS(fdilanyear,file="./data/fdilanyear.RDS")
+#country
+fdilanyearcountry<-fdilan%>%filter(year%in%c("2014","2015","2016"))%>%
+	group_by(spp,rect,country,x,y)%>%
+                summarise(w=mean(w))%>%ungroup()
+saveRDS(fdilanyearcountry,file="./data/fdilanyearcountry.RDS")
+tmp<-fdilancountry%>%filter(spp=="SOL")%>%filter(!grepl("Unknown",gear))%>%
+	filter(!grepl("Unknown",vesslen))%>%mutate(`Landings (t)`=w)
+
+
+#fleet
+fdilanfleet<-fdilan%>%filter(year%in%c("2014","2015","2016"))%>%
+	group_by(spp,vesslen,gear)%>%
+                summarise(w=mean(w))%>%ungroup()
+saveRDS(fdilanfleet,file="./data/fdilanfleet.RDS")
+tmp<-fdilanfleet%>%filter(spp=="SOL")%>%filter(!grepl("Unknown",gear))%>%
+	filter(!grepl("Unknown",vesslen))%>%mutate(`Landings (t)`=w)
+ggplot()+geom_point(data=tmp,aes(x=vesslen,y=gear,size=`Landings (t)`),color="blue")+
+                theme_bw()+
+                xlab("Vessel length")+ylab("Gear")
+
+}
+
+
+#FDI bidouillade
+if(F){
+fdilan<- readRDS(paste0(dataDirectory,"fdilan.RDS"))
+fdilanyear<-fdilan%>%filter(year%in%c("2014","2015","2016"))%>%
+	group_by(spp,rect,x,y)%>%
+                summarise(w=mean(w))%>%ungroup()
+saveRDS(fdilanyear,file="./data/fdilanyear.RDS")
+#fleet
+fdilanfleet<-fdilan%>%filter(year%in%c("2014","2015","2016"))%>%
+	group_by(spp,vesslen,gear)%>%
+                summarise(w=mean(w))%>%ungroup()
+saveRDS(file="./data/fdilanfleet.RDS")
+tmp<-fdilanfleet%>%filter(spp=="SOL")
+ggplot()+geom_point(data=tmp,aes(x=vesslen,y=gear,size=w))
 }
 fdilanyear<- readRDS(paste0(dataDirectory,"fdilanyear.RDS"))
+fdilanyearcountry<-readRDS(file="./data/fdilanyearcountry.RDS")
 div<- readRDS(paste0(dataDirectory,"div.RDS"))
 surveyxy18<-readRDS(file="./data/surveyxy18.RDS")
+fdilanfleet<-readRDS(file="./data/fdilanfleet.RDS")
 r2x<-range(div$x)
 r2y<-range(div$y)
+
+#stock info from ICES
+if(F){
+	load("../../analyses/wgparam2017.rdata")
+	wgparam<-wgparam%>%filter(fao%in%ExtraFishData$fao)
+}
+
+#fleet description
+if(F){
+}
 
 ```
    
@@ -127,11 +171,11 @@ getsppname<-function(sppname,dat=ExtraFishData){
 }
 #pecies FAO name
 getfao<-function(sppname,dat=ExtraFishData){
-  dat[as.character(dat$CommonName)==sppname,c("fao")]$fao
+  dat[as.character(dat$CommonName)==sppname,c("fao")]
 }
 #pecies AphiaIa 
 getaphia<-function(sppname,dat=ExtraFishData){
-  dat[as.character(dat$CommonName)==sppname,c("AphiaID")]$AphiaID
+  dat[as.character(dat$CommonName)==sppname,c("AphiaID")]
 }
 
 #species abstract
@@ -141,6 +185,7 @@ abstract<-function(sppname,dat=ExtraFishData){
 if(F){
 #abstract("common sole")
 getsppname("Common sole")
+getfao("Common sole")
 wikiimg("Common sole")
 }
 
@@ -254,6 +299,60 @@ pltlanyear
 ```{r}
 renderPlot({
 	pltdens(surveyxy18,sppcode=getaphia(spp()))#,rx=r2x,ry=r2y)
+})
+```
+
+Fleet
+========================================
+
+<span style="color:black;font-size:26px;font-weight:bold"> `r renderText(getsppname(spp()))` </span>
+
+Row
+-------------------------------------
+
+###
+
+```{r,eval=T}
+renderPlotly({
+tmp<-fdilanfleet%>%filter(spp==getfao(spp()))%>%filter(!grepl("Unknown",gear))%>%
+	filter(!grepl("Unknown",vesslen))%>%mutate(`Landings (t)`=w)
+ggplot()+geom_point(data=tmp,aes(x=vesslen,y=gear,size=`Landings (t)`))+
+                theme_bw()+
+		ggtitle("Fleets (2014-2106)")+
+                xlab("Vessel length")+ylab("Gear")
+})
+```
+
+Row
+-------------------------------------
+
+### Landings average 2014-2016 by country 
+
+
+```{r,eval=T}
+renderPlot({
+   #tmp<-fdilanyearcountry%>%filter(spp==getfao(spp()))#%>%
+   #tmp<-fdilanyearcountry%>%filter(spp=="SOL")#%>%
+   tmp<-fdilanyearcountry%>%filter(spp==getfao(spp()))#%>%
+   #tmp<-fdilan%>%filter(spp=="SOL"&year=="2016")%>%
+	r2x<-range(tmp$x)
+	r2y<-range(tmp$y)
+        pltcountry<-ggplot()+#geom_sf(data=div,fill=NA,colour="black",lwd=2)+
+                geom_raster(data=tmp,aes(x=x,y=y,fill=w),stat="identity",alpha=1)+
+                #geom_point(data=maplan,aes(x=x,y=y),stat="identity",alpha=1)+
+                scale_fill_distiller(palette='Spectral',name="Landings (t)")+
+                #geom_sf(data=div,fill=NA,colour="black",lwd=.3,alpha=.5)+
+                #geom_sf_text(data=div,aes(label=gsub("\\.","",gsub("27.","",div))),size=3,color="black")+
+                borders("world",xlim=r2x,ylim=r2y,fill="grey",colour=NA,alpha=1)+
+                facet_wrap(~country,ncol=5)+
+                #facet_wrap(gear~year,ncol=6,drop=FALSE)+
+                coord_sf(xlim=r2x,ylim=r2y)+
+                theme_bw()+
+                #ggtitle(paste0("French landings for ",info$stock,"\n","in ",info$area))+
+                xlab("Longitude")+ylab("Latitude")
+#ggplotly(pltlanyear,tooltip=c("x","y","w"))
+pltcountry
+
 })
 ```
 
