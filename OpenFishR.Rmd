@@ -66,10 +66,11 @@ pltdens<-function(dat,sppcode="127160"){
 	ry<-range(tmp$y)
 	tmp<-KernSmooth::bkde2D(tmp%>%transmute(x,y),bandwidth=c(.01,.01),gridsize=c(100,100))
 	tmp<-data.frame(x=rep(tmp$x1,each=length(tmp$x1)),y=rep(tmp$x2,length(tmp$x2)),count=c(tmp$fhat))
+	tmp<-tmp%>%filter(count>0)
         plt<-ggplot()+#geom_sf(data=div,fill=NA,colour="black",lwd=2)+e
                 geom_raster(data=tmp,aes(x=x,y=y,fill=count),stat="identity",alpha=1)+
 	#	geom_point(data=surveyxy18,aes(x=x,y=y),pch=".",alpha=.2)+
-                scale_fill_distiller(palette='Spectral',name="Presence \n(Kernel density\nestimates)")+
+                scale_fill_distiller(palette='Spectral',name="Presence \n(Kernel density\nestimates)",trans='log10')+
                 geom_sf(data=div,fill=NA,colour="black",lwd=.3,alpha=.5)+
                 geom_sf_text(data=div,aes(label=gsub("\\.","",gsub("27.","",div))),size=3,color="black")+
                 borders("world",xlim=rx,ylim=ry,fill="grey",colour=NA,alpha=1)+
@@ -334,9 +335,10 @@ renderPlot({
 })
 ```
 
-Landings flux
+Landings flux  
 ========================================
 
+###  {data-height=950}
 <span style="color:black;font-size:26px;font-weight:bold"> `r renderText(getsppname(spp()))` </span>
 
 ```{r}
@@ -359,15 +361,15 @@ title("Landings flux between ICES divisions and countries (average 2014-2016)")
 #points(x=pipo$xr,y=pipo$yr,pch=19,col="blue",cex=0.1)
 #pipo1<-na.omit(pipo)
 #for(i in 1:nrow(pipo1)){
-col.1 <- adjustcolor("orange red", alpha=0.4)
-col.2 <- adjustcolor("orange", alpha=0.4)
+col.1 <- adjustcolor("orange red", alpha=0.6)
+col.2 <- adjustcolor("orange", alpha=0.6)
 edge.pal <- colorRampPalette(c(col.1, col.2), alpha = TRUE)
 edge.col <- edge.pal(100)
 #id<-which(pipo1$rect=="29F0")
 for(i in 1:nrow(lanflux)){
 	                arc<-gcIntermediate(c(lanflux$xd[i],lanflux$yd[i]),c(lanflux$xc[i],lanflux$yc[i]),n=100,addStartEnd=T)
         edge.ind<-round(100*lanflux$w[i]/max(lanflux$w,na.rm=T))
-	                lines(arc,col=edge.col[edge.ind],lwd=edge.ind/10)
+	                lines(arc,col=edge.col[edge.ind],lwd=edge.ind/5)
 }
 
 })
@@ -392,7 +394,7 @@ tmp<-fdilanfleet%>%filter(spp==getfao(spp()))%>%filter(!grepl("Unknown",gear))%>
 	filter(!grepl("Unknown",vesslen))%>%mutate(`Landings (t)`=w)
 ggplot()+geom_point(data=tmp,aes(x=vesslen,y=gear,size=`Landings (t)`))+
                 theme_bw()+
-		ggtitle("Fleets (2014-2106)")+
+		ggtitle("Fleets (2014-2016)")+
                 xlab("Vessel length")+ylab("Gear")
 })
 ```
@@ -400,7 +402,7 @@ ggplot()+geom_point(data=tmp,aes(x=vesslen,y=gear,size=`Landings (t)`))+
 Row
 -------------------------------------
 
-### Landings average 2014-2016 by country 
+### Landings average 2014-2016 by country  {data-height=850}
 
 
 ```{r,eval=T}
@@ -459,6 +461,37 @@ Row
 renderImage({list(src=rawToJpeg(SAGstock[SAGstock$SpeciesName==getSciName(spp()), c("statusPic")][[1]][[2]]))})
 ```
 
+Marine environment
+=======================================================
+
+<span style="color:black;font-size:26px;font-weight:bold"> `r renderText(getsppname(spp()))` </span>
+
+### Primary production
+
+```{r,eval=T}
+library(rasterVis)
+pp<-stack("./data/envprod")
+gplot(pp)+geom_tile(aes(fill=value))+
+	scale_fill_gradient(low="blue",high="green",trans="log10")+
+	facet_wrap(~variable)+#raster(aes(fill="Prod_2000"))
+                theme_bw()+
+                xlab("Longitude")+ylab("Latitude")
+
+```
+
+### Sea surface temperature
+
+```{r,eval=T}
+sst<-stack("./data/envtemp")
+gplot(sst)+geom_tile(aes(fill=value))+
+	scale_fill_gradient(low="blue",high="red")+#,trans="log10")+
+	facet_wrap(~variable)+#raster(aes(fill="Prod_2000"))
+                theme_bw()+
+                xlab("Longitude")+ylab("Latitude")
+```
+
+Row
+-------------------------------------
 
 
 About
