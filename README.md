@@ -9,7 +9,8 @@ This is Team 4's code from the second Open Sea Lab hackathon.
 * Jordan Moss
 * Laurent Dubroca
 
-## Usefull Fisheries and Environmental information
+## "Yet Another Seafood App": An application to present useful fisheries and environmental information for commercial fish species
+
 Team 4 created a dashboard showing some useful fisheries and environmental information from a number of commercial species. It is written in R.
 
 ![](https://github.com/EMODnet/OSL2-Team4/blob/master/fig/Team4_Screenshot.PNG)
