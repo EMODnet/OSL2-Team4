@@ -2,12 +2,17 @@
 
 This is Team 4's code from the second Open Sea Lab hackathon.
 
-picture here
+![](https://github.com/EMODnet/OSL2-Team4/blob/master/fig/Team4_team.PNG)
+
+* David Currie
+* Ibrahim Umar
+* Jordan Moss
+* Laurent Dubroca
 
 ## Usefull Fisheries and Environmental information
 Team 4 created a dashboard showing some useful fisheries and environmental information from a number of commercial species. It is written in R.
 
-screenshot here
+![](https://github.com/EMODnet/OSL2-Team4/blob/master/fig/Team4_Screenshot.PNG)
 
 
 ## Running the Application
